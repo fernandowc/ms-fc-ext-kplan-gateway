@@ -1,0 +1,11 @@
+/Users/luisvidal/dev/my/java/kplan_app/api-gateway/src/main/java/com/kplan/gateway/GatewayApplication.java
+/Users/luisvidal/dev/my/java/kplan_app/api-gateway/src/main/java/com/kplan/gateway/config/CorsConfig.java
+/Users/luisvidal/dev/my/java/kplan_app/api-gateway/src/main/java/com/kplan/gateway/config/JwtConfig.java
+/Users/luisvidal/dev/my/java/kplan_app/api-gateway/src/main/java/com/kplan/gateway/config/RateLimiterConfig.java
+/Users/luisvidal/dev/my/java/kplan_app/api-gateway/src/main/java/com/kplan/gateway/config/SecurityConfig.java
+/Users/luisvidal/dev/my/java/kplan_app/api-gateway/src/main/java/com/kplan/gateway/config/SwaggerConfig.java
+/Users/luisvidal/dev/my/java/kplan_app/api-gateway/src/main/java/com/kplan/gateway/exception/GatewayExceptionHandler.java
+/Users/luisvidal/dev/my/java/kplan_app/api-gateway/src/main/java/com/kplan/gateway/filter/InternalRouteProtectionFilter.java
+/Users/luisvidal/dev/my/java/kplan_app/api-gateway/src/main/java/com/kplan/gateway/filter/JwtAuthenticationGlobalFilter.java
+/Users/luisvidal/dev/my/java/kplan_app/api-gateway/src/main/java/com/kplan/gateway/filter/RequestLoggingGlobalFilter.java
+/Users/luisvidal/dev/my/java/kplan_app/api-gateway/src/main/java/com/kplan/gateway/health/GatewayHealthController.java

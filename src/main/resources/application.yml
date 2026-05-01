@@ -1,0 +1,244 @@
+# =====================================================
+# KPlan API Gateway Configuration
+# =====================================================
+# Single entry point for all client requests.
+# Responsibilities: routing, JWT validation, rate limiting,
+# CORS, request logging, internal route protection.
+# NO business logic, NO database.
+# =====================================================
+
+server:
+  port: 8080
+  netty:
+    connection-timeout: 5000
+
+spring:
+  application:
+    name: api-gateway
+
+  # ---- Redis (for rate limiting) ----
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 2000
+
+  # ---- Spring Cloud Gateway ----
+  cloud:
+    gateway:
+      # Global defaults
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
+
+      # Global CORS (complemented by CorsConfig.java bean)
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOriginPatterns: "*"
+            allowedMethods: "*"
+            allowedHeaders: "*"
+            allowCredentials: true
+
+      # Global timeouts for all routes
+      httpclient:
+        connect-timeout: 3000
+        response-timeout: 10s
+
+      # ===================================================
+      # Route definitions
+      # ===================================================
+      routes:
+        # ---- Auth Service ----
+        - id: auth-service
+          uri: ${AUTH_SERVICE_URL:http://localhost:8081}
+          predicates:
+            - Path=/api/v1/auth/**
+          filters:
+            - StripPrefix=0
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 10
+                redis-rate-limiter.burstCapacity: 20
+                redis-rate-limiter.requestedTokens: 1
+                key-resolver: "#{@userOrIpKeyResolver}"
+                deny-empty-key: false
+
+        # ---- Profile Service ----
+        - id: profile-service
+          uri: ${PROFILE_SERVICE_URL:http://localhost:8082}
+          predicates:
+            - Path=/api/v1/profiles/**, /api/v1/subscriptions/**
+          filters:
+            - StripPrefix=0
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 20
+                redis-rate-limiter.burstCapacity: 40
+                redis-rate-limiter.requestedTokens: 1
+                key-resolver: "#{@userOrIpKeyResolver}"
+                deny-empty-key: false
+
+        # ---- Venue & Event Service ----
+        - id: venue-event-service
+          uri: ${VENUE_EVENT_SERVICE_URL:http://localhost:8083}
+          predicates:
+            - Path=/api/v1/venues/**, /api/v1/events/**, /api/v1/categories/**, /api/v1/attendances/**, /api/v1/ubigeo/**
+          filters:
+            - StripPrefix=0
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 30
+                redis-rate-limiter.burstCapacity: 60
+                redis-rate-limiter.requestedTokens: 1
+                key-resolver: "#{@userOrIpKeyResolver}"
+                deny-empty-key: false
+
+        # ---- Social Group Service ----
+        - id: social-group-service
+          uri: ${SOCIAL_GROUP_SERVICE_URL:http://localhost:8084}
+          predicates:
+            - Path=/api/v1/groups/**
+          filters:
+            - StripPrefix=0
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 20
+                redis-rate-limiter.burstCapacity: 40
+                redis-rate-limiter.requestedTokens: 1
+                key-resolver: "#{@userOrIpKeyResolver}"
+                deny-empty-key: false
+
+        # ---- Companion Slots (Social Group Service) ----
+        - id: companion-slots
+          uri: ${SOCIAL_GROUP_SERVICE_URL:http://localhost:8084}
+          predicates:
+            - Path=/api/v1/companion-slots/**
+          filters:
+            - StripPrefix=0
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 20
+                redis-rate-limiter.burstCapacity: 40
+                redis-rate-limiter.requestedTokens: 1
+                key-resolver: "#{@userOrIpKeyResolver}"
+                deny-empty-key: false
+
+        # ---- Booking Service ----
+        - id: booking-service
+          uri: ${BOOKING_SERVICE_URL:http://localhost:8085}
+          predicates:
+            - Path=/api/v1/bookings/**
+          filters:
+            - StripPrefix=0
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 15
+                redis-rate-limiter.burstCapacity: 30
+                redis-rate-limiter.requestedTokens: 1
+                key-resolver: "#{@userOrIpKeyResolver}"
+                deny-empty-key: false
+
+        # ---- Notification Service ----
+        - id: notification-service
+          uri: ${NOTIFICATION_SERVICE_URL:http://localhost:8086}
+          predicates:
+            - Path=/api/v1/notifications/**
+          filters:
+            - StripPrefix=0
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 20
+                redis-rate-limiter.burstCapacity: 40
+                redis-rate-limiter.requestedTokens: 1
+                key-resolver: "#{@userOrIpKeyResolver}"
+                deny-empty-key: false
+
+        # ===================================================
+        # Swagger documentation proxying
+        # StripPrefix=1 removes the service-name prefix:
+        #   /auth-service/v3/api-docs → /v3/api-docs
+        # ===================================================
+        - id: auth-service-docs
+          uri: ${AUTH_SERVICE_URL:http://localhost:8081}
+          predicates:
+            - Path=/auth-service/v3/api-docs/**
+          filters:
+            - StripPrefix=1
+
+        - id: profile-service-docs
+          uri: ${PROFILE_SERVICE_URL:http://localhost:8082}
+          predicates:
+            - Path=/profile-service/v3/api-docs/**
+          filters:
+            - StripPrefix=1
+
+        - id: venue-event-service-docs
+          uri: ${VENUE_EVENT_SERVICE_URL:http://localhost:8083}
+          predicates:
+            - Path=/venue-event-service/v3/api-docs/**
+          filters:
+            - StripPrefix=1
+
+        - id: social-group-service-docs
+          uri: ${SOCIAL_GROUP_SERVICE_URL:http://localhost:8084}
+          predicates:
+            - Path=/social-group-service/v3/api-docs/**
+          filters:
+            - StripPrefix=1
+
+        - id: booking-service-docs
+          uri: ${BOOKING_SERVICE_URL:http://localhost:8085}
+          predicates:
+            - Path=/booking-service/v3/api-docs/**
+          filters:
+            - StripPrefix=1
+
+        - id: notification-service-docs
+          uri: ${NOTIFICATION_SERVICE_URL:http://localhost:8086}
+          predicates:
+            - Path=/notification-service/v3/api-docs/**
+          filters:
+            - StripPrefix=1
+
+# ---- JWT (public key only — validation, never signing) ----
+jwt:
+  public-key: ${JWT_PUBLIC_KEY}
+
+# ---- Logging ----
+logging:
+  level:
+    root: INFO
+    org.springframework.cloud.gateway: INFO
+    com.kplan.gateway: DEBUG
+    com.kplan.gateway.filter: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+# ---- Springdoc Swagger UI aggregation ----
+springdoc:
+  swagger-ui:
+    urls:
+      - name: auth-service
+        url: /auth-service/v3/api-docs
+      - name: profile-service
+        url: /profile-service/v3/api-docs
+      - name: venue-event-service
+        url: /venue-event-service/v3/api-docs
+      - name: social-group-service
+        url: /social-group-service/v3/api-docs
+      - name: booking-service
+        url: /booking-service/v3/api-docs
+      - name: notification-service
+        url: /notification-service/v3/api-docs
+
+# ---- Actuator ----
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, gateway
+  endpoint:
+    gateway:
+      enabled: true
+    health:
+      show-details: when-authorized
